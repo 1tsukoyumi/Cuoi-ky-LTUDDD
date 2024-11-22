@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "722506564360",
+    "project_id": "lttbdd-pikachu",
+    "storage_bucket": "lttbdd-pikachu.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:722506564360:android:141f35f4a6e1e1abe9a2bd",
+        "android_client_info": {
+          "package_name": "com.nhom11.cuoiky"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD97pZ1TcVEvsVT0NitIC3MdydHIUcxSS4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
