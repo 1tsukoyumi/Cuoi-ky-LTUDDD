@@ -1,41 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { fetchTopScoresRealtime, resetScores } from './firebaseConfig'; // Import hàm fetchScores
+import { fetchTopScoresRealtime, resetScores } from './firebaseConfig';
 
 const ScoreScreen = ({ navigation }: { navigation: any }) => {
     const [scores, setScores] = useState([]);
 
     useEffect(() => {
-        // Gọi hàm fetchTopScoresRealtime để lắng nghe thay đổi
         const unsubscribe = fetchTopScoresRealtime((fetchedScores: any) => {
-            setScores(fetchedScores); // Cập nhật danh sách điểm
+            setScores(fetchedScores);
         });
 
-        // Hủy listener khi component bị unmount
         return () => unsubscribe();
     }, []);
-
-    const handleResetScores = async () => {
-        Alert.alert(
-            'Xác nhận',
-            'Bạn có chắc chắn muốn xóa toàn bộ điểm?',
-            [
-                {
-                    text: 'Hủy',
-                    style: 'cancel',
-                },
-                {
-                    text: 'Xóa',
-                    onPress: async () => {
-                        await resetScores(); // Gọi hàm reset
-                        setScores([]); // Xóa dữ liệu khỏi state
-                    },
-                    style: 'destructive',
-                },
-            ]
-        );
-    };
-
+    
     const renderItem = ({ item, index }: { item: any, index: any }) => (
         <View style={styles.scoreRow}>
             <Text style={styles.rank}>{index + 1}</Text>
@@ -52,12 +29,6 @@ const ScoreScreen = ({ navigation }: { navigation: any }) => {
                 keyExtractor={(item) => item.id}
                 renderItem={renderItem}
             />
-            {/* <TouchableOpacity
-                style={styles.button}
-                onPress={handleResetScores}
-            >
-                <Text style={styles.buttonText}>Xoá điểm</Text>
-            </TouchableOpacity> */}
             <TouchableOpacity
                 style={styles.button}
                 onPress={() => { navigation.navigate('HomeScreen'); }}

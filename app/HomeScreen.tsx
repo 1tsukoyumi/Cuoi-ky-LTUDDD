@@ -16,18 +16,18 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
   const { gameState, setGameState } = useGameContext();
 
   const handleNewGame = () => {
-    // Xóa trạng thái game hiện tại
     setGameState({
       matrix: null,
       timeLeft: 60,
       score: 0,
       pairsFound: 0,
+      playerName: '',
     });
-    navigation.navigate('SetNameScreen'); // Điều hướng đến màn chơi mới
+    navigation.navigate('SetNameScreen');
   };
 
   const handleScore = () => {
-    navigation.navigate('ScoreScreen');// điều hướng đến bảng điểm
+    navigation.navigate('ScoreScreen');
   };
 
   useEffect(() => {
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-    elevation: 5, // Hiệu ứng đổ bóng
+    elevation: 5,
   },
   buttonText: {
     color: '#FFF',

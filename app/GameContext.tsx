@@ -26,6 +26,7 @@ type GameState = {
     timeLeft: number;
     score: number;
     pairsFound: number;
+    playerName: string;
 };
 
 type GameContextType = {
@@ -38,6 +39,7 @@ const defaultState: GameState = {
     timeLeft: 60,
     score: 0,
     pairsFound: 0,
+    playerName: '',
 };
 
 const GameContext = createContext({
@@ -48,7 +50,6 @@ const GameContext = createContext({
 export const GameProvider = ({ children }: { children: React.ReactNode }) => {
     const [gameState, setGameState] = useState<GameState>(defaultState);
 
-    // Load trạng thái từ AsyncStorage khi ứng dụng khởi động
     useEffect(() => {
         const loadGameState = async () => {
             const savedState = await AsyncStorage.getItem('gameState');
@@ -59,7 +60,6 @@ export const GameProvider = ({ children }: { children: React.ReactNode }) => {
         loadGameState();
     }, []);
 
-    // Lưu trạng thái mỗi khi gameState thay đổi
     useEffect(() => {
         AsyncStorage.setItem('gameState', JSON.stringify(gameState));
     }, [gameState]);

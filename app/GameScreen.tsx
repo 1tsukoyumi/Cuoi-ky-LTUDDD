@@ -4,33 +4,54 @@ import { saveScore } from './firebaseConfig';
 import { Audio } from 'expo-av';
 import { useGameContext } from './GameContext';
 import { useRoute, RouteProp } from '@react-navigation/native';
+import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
+
 
 export type Cell = { x: number; y: number; state: number; id: number };
 
 type RootStackParamList = {
     GameScreen: {
-      playerName: any;
+        playerName: any;
+        difficulty: any;
     };
-  };
-  
-  type GameScreenRouteProp = RouteProp<RootStackParamList, 'GameScreen'>;
+};
+
+type GameScreenRouteProp = RouteProp<RootStackParamList, 'GameScreen'>;
 
 export default function GameScreen({ navigation }: { navigation: any }) {
     const [matrix, setMatrix] = useState<Cell[][]>([]);
     const [lastChose, setLastChose] = useState<Cell | null>(null);
-    const [timeLeft, setTimeLeft] = useState(60); // Bộ đếm ngược
-    const [score, setScore] = useState(0); // Bộ đếm điểm số
-    const [pairsFound, setPairsFound] = useState(0); // Số cặp đã ăn
-    const timerRef = useRef<number | null>(null); // Tham chiếu đến bộ đếm thời gian
+    const [timeLeft, setTimeLeft] = useState(180);
+    const [score, setScore] = useState(0);
+    const [lenght, setLenght] = useState(4);
+    const [playerName, setplayerName] = useState('');
+    const [pairsFound, setPairsFound] = useState(0);
+    const timerRef = useRef<number | null>(null);
     const [hintPair, setHintPair] = useState<{ cell1: Cell; cell2: Cell } | null>(null);
     const [clickSound, setClickSound] = useState<Audio.Sound | null>(null);
     const [correctSound, setCorrectSound] = useState<Audio.Sound | null>(null);
     const [wrongSound, setWrongSound] = useState<Audio.Sound | null>(null);
-    const route = useRoute<GameScreenRouteProp>();
-
+    const [musicSound, setMusicSound] = useState<Audio.Sound | null>(null);
+    const [finalSound, setFinalSound] = useState<Audio.Sound | null>(null);
+    const [loserSound, setLoserSound] = useState<Audio.Sound | null>(null);
+    const [soundEnabled, setSoundEnabled] = useState(true);
+    const [musicEnabled, setMusicEnabled] = useState(true);
     const { setGameState } = useGameContext();
+
+    const route = useRoute<GameScreenRouteProp>();
     const { gameState } = useGameContext();
-    const { playerName } = route.params.playerName;
+    var difficulty = 'easy';
+    var cols = 4;
+    var rows = 4;
+
+    const getInfo = () => {
+        try {
+            setplayerName(route.params.playerName);
+            difficulty = route.params.difficulty;
+        } catch (error) {
+            
+        }
+    }
 
     const saveGame = () => {
         setGameState({
@@ -38,16 +59,34 @@ export default function GameScreen({ navigation }: { navigation: any }) {
             timeLeft,
             score,
             pairsFound,
+            playerName
         });
     };
 
     const resetGame = () => {
         setGameState({
             matrix: null,
-            timeLeft: 60,
+            timeLeft: 180,
             score: 0,
             pairsFound: 0,
+            playerName: '',
         });
+    };
+
+    const getBoardSize = () => {
+        if (difficulty === 'easy') {
+            rows = 4;
+            cols = 4;
+            setLenght(8);
+        } else if (difficulty === 'medium') {
+            rows = 6;
+            cols = 6;
+            setLenght(18);
+        } else if (difficulty === 'hard') {
+            rows = 10;
+            cols = 6;
+            setLenght(30);
+        }
     };
 
     useEffect(() => {
@@ -56,50 +95,114 @@ export default function GameScreen({ navigation }: { navigation: any }) {
             setTimeLeft(gameState.timeLeft);
             setScore(gameState.score);
             setPairsFound(gameState.pairsFound);
+            setplayerName(gameState.playerName);
         } else {
+            getInfo();
+            getBoardSize();
             createMatrix();
         }
+
     }, []);
 
-    // Tải âm thanh
     const loadSounds = async () => {
         const { sound: click } = await Audio.Sound.createAsync(require('./sounds/click.wav'));
         const { sound: correct } = await Audio.Sound.createAsync(require('./sounds/correct.wav'));
         const { sound: wrong } = await Audio.Sound.createAsync(require('./sounds/wrong.wav'));
-
+        const { sound: final } = await Audio.Sound.createAsync(require('./sounds/Congratulations.mp3'));
+        const { sound:loser} = await Audio.Sound.createAsync(require('./sounds/Loser.mp3'));
         setClickSound(click);
         setCorrectSound(correct);
         setWrongSound(wrong);
+        setFinalSound(final);
+        setLoserSound(loser);
     };
 
-    // Gỡ âm thanh khi không dùng
+    const loadBackgroundMusic = async () => {
+        try {
+            const { sound } = await Audio.Sound.createAsync(
+                require('./sounds/background.mp3'),
+                { isLooping: true }
+            );
+            setMusicSound(sound);
+            if (musicEnabled) {
+                await sound.playAsync();
+            }
+        } catch (error) {
+            console.error('Lỗi khi tải nhạc nền:', error);
+        }
+    };
+
+    const toggleSound = () => {
+        setSoundEnabled((prev) => !prev);
+
+    };
+    const toggleMusic = () => {
+        setMusicEnabled((prev) => !prev);
+        if (musicEnabled){
+            if (musicSound) {
+                musicSound.stopAsync();
+            }
+        }else{
+            if (musicSound) {
+                musicSound.playAsync();
+            }
+        }
+
+    };
+
     useEffect(() => {
         loadSounds();
+        loadBackgroundMusic();
 
         return () => {
             clickSound?.unloadAsync();
             correctSound?.unloadAsync();
             wrongSound?.unloadAsync();
+            if (musicSound) {
+                musicSound.stopAsync();
+                musicSound.unloadAsync();
+            }
         };
     }, []);
 
-    // Hàm phát âm thanh
+    useEffect(() => {
+        
+    }, []);
+
+
     const playClickSound = async () => {
-        if (clickSound) await clickSound.replayAsync();
+        if (soundEnabled) {
+            if (clickSound) await clickSound.replayAsync();
+        }
     };
 
     const playCorrectSound = async () => {
-        if (correctSound) await correctSound.replayAsync();
+        if (soundEnabled) {
+            if (correctSound) await correctSound.replayAsync();
+        }
     };
 
     const playWrongSound = async () => {
-        if (wrongSound) await wrongSound.replayAsync();
+        if (soundEnabled) {
+            if (wrongSound) await wrongSound.replayAsync();
+        }
+    };
+    const playFinalSound = async () => {
+        if (soundEnabled) {
+            if (finalSound) await finalSound.replayAsync();
+        }
+    };
+    const playLoserSound = async () => {
+        if (soundEnabled) {
+            if (loserSound) await loserSound.replayAsync();
+        }
     };
 
     const createMatrix = () => {
-        const rows = 6;
-        const cols = 5;
-        const randomArray = Array.from({ length: 15 }, () => Math.floor(Math.random() * 13) + 1);
+        const randomArray = Array.from(
+            { length: (rows * cols) / 2 },
+            () => Math.floor(Math.random() * 13) + 1
+          );
         const doubledArray = [...randomArray, ...randomArray];
         const shuffledArray = doubledArray.sort(() => Math.random() - 0.5);
 
@@ -131,6 +234,10 @@ export default function GameScreen({ navigation }: { navigation: any }) {
         } else {
             var sc = score;
             resetGame();
+            if (musicSound) {
+                musicSound.stopAsync();
+            }
+            playLoserSound();
             Alert.alert('Hết giờ!', 'Điểm số của bạn: ' + sc, [
                 { text: 'OK', onPress: () => navigation.navigate('HomeScreen') },
             ]);
@@ -140,7 +247,7 @@ export default function GameScreen({ navigation }: { navigation: any }) {
 
 
     const handleSaveScore = async () => {
-        if (!score || score <= 0) return; // Không lưu nếu điểm <= 0
+        if (!score || score <= 0) return;
         try {
             await saveScore(playerName, score + timeLeft);
             console.log('Score saved successfully!');
@@ -152,16 +259,19 @@ export default function GameScreen({ navigation }: { navigation: any }) {
 
 
     useEffect(() => {
-        if (pairsFound === 15) {
+        if (pairsFound === lenght) {
             if (timerRef.current !== null) {
                 clearInterval(timerRef.current);
                 timerRef.current = null;
             }
 
-            const finalScore = score + timeLeft; // Cộng thêm thời gian còn lại vào điểm số
+            const finalScore = score + timeLeft;
             setScore(finalScore);
             resetGame();
-
+            if (musicSound) {
+                musicSound.stopAsync();
+            }
+            playFinalSound ();
             Alert.alert(
                 'Chúc mừng!',
                 `Bạn đã hoàn thành game! Điểm số của bạn là: ${finalScore}`,
@@ -171,63 +281,56 @@ export default function GameScreen({ navigation }: { navigation: any }) {
         }
     }, [pairsFound]);
 
-    // Thuật toán kiểm tra kết nối
     const checkLineX = (y1: number, y2: number, x: number, matrix: Cell[][]): boolean => {
         const [min, max] = [Math.min(y1, y2), Math.max(y1, y2)];
         for (let y = min + 1; y < max; y++) {
-            if (matrix[x][y].state != 0) return false; // Nếu bị chắn, trả về false
+            if (matrix[x][y].state != 0) return false;
         }
-        return true; // Không bị chắn
+        return true;
     };
 
     const checkLineY = (x1: number, x2: number, y: number, matrix: Cell[][]): boolean => {
         const [min, max] = [Math.min(x1, x2), Math.max(x1, x2)];
         for (let x = min + 1; x < max; x++) {
-            if (matrix[x][y].state != 0) return false; // Nếu bị chắn, trả về false
+            if (matrix[x][y].state != 0) return false;
         }
-        return true; // Không bị chắn
+        return true;
     };
     const checkRectX = (p1: Cell, p2: Cell, matrix: Cell[][]): number => {
-        // Xác định điểm có tọa độ Y nhỏ hơn
         const [pMinY, pMaxY] = p1.y > p2.y ? [p2, p1] : [p1, p2];
 
         for (let y = pMinY.y; y <= pMaxY.y; y++) {
-            // Nếu gặp vật cản giữa hai điểm
             if (y > pMinY.y && matrix[pMinY.x][y].state !== 0) {
                 return -1;
             }
-            // Kiểm tra các đường kết nối
             if (
                 (matrix[pMaxY.x][y].state === 0 || y === pMaxY.y) &&
                 checkLineY(pMinY.x, pMaxY.x, y, matrix) &&
                 checkLineX(y, pMaxY.y, pMaxY.x, matrix)
             ) {
-                return y; // Trả về tọa độ Y hợp lệ
+                return y;
             }
         }
-        return -1; // Không tìm thấy kết nối
+        return -1;
     };
 
 
     const checkRectY = (p1: Cell, p2: Cell, matrix: Cell[][]): number => {
-        // Xác định điểm có tọa độ X nhỏ hơn
         const [pMinX, pMaxX] = p1.x > p2.x ? [p2, p1] : [p1, p2];
 
         for (let x = pMinX.x; x <= pMaxX.x; x++) {
-            // Nếu gặp vật cản giữa hai điểm
             if (x > pMinX.x && matrix[x][pMinX.y].state !== 0) {
                 return -1;
             }
-            // Kiểm tra các đường kết nối
             if (
                 (matrix[x][pMaxX.y].state === 0 || x === pMaxX.x) &&
                 checkLineX(pMinX.y, pMaxX.y, x, matrix) &&
                 checkLineY(x, pMaxX.x, pMaxX.y, matrix)
             ) {
-                return x; // Trả về tọa độ X hợp lệ
+                return x;
             }
         }
-        return -1; // Không tìm thấy kết nối
+        return -1;
     };
 
 
@@ -312,8 +415,8 @@ export default function GameScreen({ navigation }: { navigation: any }) {
     };
 
     const printMatrix = () => {
-        const idMatrix = matrix.map(row => row.map(cell => cell.id)); // Lấy ma trận id
-        console.table(idMatrix); // In ra console
+        const idMatrix = matrix.map(row => row.map(cell => cell.id));
+        console.table(idMatrix);
     };
 
     // Xử lý nhấn vào ô
@@ -321,21 +424,21 @@ export default function GameScreen({ navigation }: { navigation: any }) {
         if (cell.state === 0 || (lastChose && lastChose.x === cell.x && lastChose.y === cell.y)) return;
 
         if (!lastChose) {
-            await playClickSound(); // Phát âm thanh nhấn ô
+            await playClickSound();
             setLastChose(cell);
         } else {
             if (canConnect(lastChose, cell, matrix)) {
-                await playCorrectSound(); // Phát âm thanh chọn đúng
+                await playCorrectSound();
                 saveGame();
                 updateMatrix(cell, lastChose);
             } else {
-                await playWrongSound(); // Phát âm thanh chọn sai
+                await playWrongSound(); 
                 saveGame();
             }
             setLastChose(null);
         }
 
-        setHintPair(null); // Reset trạng thái gợi ý
+        setHintPair(null);
         printMatrix();
     };
 
@@ -349,7 +452,6 @@ export default function GameScreen({ navigation }: { navigation: any }) {
 
         let index = 0;
 
-        // Cập nhật ma trận tạm thời
         const newMatrix = matrix.map((row) =>
             row.map((cell) =>
                 cell.state !== 0
@@ -358,18 +460,16 @@ export default function GameScreen({ navigation }: { navigation: any }) {
             )
         );
 
-        setMatrix(newMatrix); // Cập nhật trạng thái
+        setMatrix(newMatrix);
         console.log('Matrix shuffled');
 
-        // Kiểm tra cặp hợp lệ ngay trên `newMatrix`
         if (!hasAvailablePairs(newMatrix)) {
             console.log('No valid pairs, reshuffling...');
-            shuffleMatrix(); // Gọi lại hàm nếu cần
+            shuffleMatrix();
         }
     };
 
     const findHint = () => {
-        // Duyệt qua tất cả các ô còn tồn tại
         const existingCells = matrix.flat().filter((cell) => cell.state !== 0);
 
         for (let i = 0; i < existingCells.length; i++) {
@@ -377,9 +477,8 @@ export default function GameScreen({ navigation }: { navigation: any }) {
                 const cell1 = existingCells[i];
                 const cell2 = existingCells[j];
 
-                // Kiểm tra nếu hai ô có thể kết nối được
                 if (canConnect(cell1, cell2, matrix)) {
-                    setHintPair({ cell1, cell2 }); // Lưu cặp gợi ý vào trạng thái
+                    setHintPair({ cell1, cell2 });
                     return;
                 }
             }
@@ -397,12 +496,12 @@ export default function GameScreen({ navigation }: { navigation: any }) {
                 const cell2 = existingCells[j];
 
                 if (canConnect(cell1, cell2, customMatrix)) {
-                    return true; // Có cặp hợp lệ
+                    return true;
                 }
             }
         }
 
-        return false; // Không có cặp nào hợp lệ
+        return false;
     };
 
 
@@ -418,8 +517,8 @@ export default function GameScreen({ navigation }: { navigation: any }) {
                 )
             )
         );
-        setScore((prevScore) => prevScore + 10); // Cập nhật điểm số đồng bộ
-        setPairsFound((prevPairs) => prevPairs + 1); // Tăng số cặp đã tìm
+        setScore((prevScore) => prevScore + 10);
+        setPairsFound((prevPairs) => prevPairs + 1);
     };
 
     const getImageForId = (id: number) => {
@@ -462,6 +561,62 @@ export default function GameScreen({ navigation }: { navigation: any }) {
                 <Text style={styles.headerText}>Thời gian: {timeLeft}s</Text>
                 <Text style={styles.headerText}>Điểm: {score}</Text>
             </View>
+    
+            <View style={styles.buttonsRow}>
+                <TouchableOpacity
+                    style={[styles.roundButton, { backgroundColor: '#007BFF' }]}
+                    onPress={() => {
+                        saveGame();
+                        if (musicSound) {
+                            musicSound.stopAsync();
+                        }
+                        if (timerRef.current !== null) {
+                            clearInterval(timerRef.current);
+                            timerRef.current = null;
+                        }
+                        navigation.navigate('HomeScreen');
+                    }}
+                >
+                    <FontAwesome name="home" size={24} color="white" />
+                </TouchableOpacity>
+    
+                <TouchableOpacity
+                    style={[styles.roundButton, { backgroundColor: '#FFA500' }]}
+                    onPress={findHint}
+                >
+                    <FontAwesome name="lightbulb-o" size={24} color="white" />
+                </TouchableOpacity>
+    
+                <TouchableOpacity
+                    style={[styles.roundButton, { backgroundColor: '#32CD32' }]}
+                    onPress={shuffleMatrix}
+                >
+                    <MaterialCommunityIcons name="shuffle" size={24} color="white" />
+                </TouchableOpacity>
+    
+                <TouchableOpacity
+                    style={[styles.roundButton, { backgroundColor: '#FF4500' }]}
+                    onPress={toggleSound}
+                >
+                    <FontAwesome
+                        name={soundEnabled ? 'volume-up' : 'volume-off'}
+                        size={24}
+                        color="white"
+                    />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.roundButton, { backgroundColor: '#AA4500' }]}
+                    onPress={toggleMusic}
+                >
+                    <MaterialCommunityIcons 
+                        name={musicEnabled ? 'music' : 'music-off'}
+                        size={24}
+                        color="white"
+                    />
+                </TouchableOpacity>
+            </View>
+    
             <View style={styles.board}>
                 {matrix.map((row, rowIndex) => (
                     <View key={rowIndex} style={styles.row}>
@@ -476,8 +631,10 @@ export default function GameScreen({ navigation }: { navigation: any }) {
                                     lastChose.y === cell.y &&
                                     styles.selectedCell,
                                     hintPair &&
-                                    ((hintPair.cell1.x === cell.x && hintPair.cell1.y === cell.y) ||
-                                        (hintPair.cell2.x === cell.x && hintPair.cell2.y === cell.y)) &&
+                                    ((hintPair.cell1.x === cell.x &&
+                                        hintPair.cell1.y === cell.y) ||
+                                        (hintPair.cell2.x === cell.x &&
+                                            hintPair.cell2.y === cell.y)) &&
                                     styles.hintCell, // Làm nổi bật ô gợi ý
                                 ]}
                                 onPress={() => handleCellPress(cell)}
@@ -489,39 +646,12 @@ export default function GameScreen({ navigation }: { navigation: any }) {
                                     />
                                 )}
                             </TouchableOpacity>
-                        ))}
+                        ))} 
                     </View>
                 ))}
             </View>
-            <TouchableOpacity
-                style={styles.shuffleButton}
-                onPress={shuffleMatrix}
-            >
-                <Text style={styles.buttonText}>Đảo Vị Trí</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-                style={styles.hintButton}
-                onPress={findHint}
-            >
-                <Text style={styles.buttonText}>Gợi ý</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-                style={styles.button}
-                onPress={() => {
-                    saveGame(); // Lưu trạng thái
-                    if (timerRef.current !== null) {
-                        clearInterval(timerRef.current);
-                        timerRef.current = null;
-                    }
-                    navigation.navigate('HomeScreen');
-                }}
-            >
-                <Text style={styles.buttonText}>Trang chủ</Text>
-            </TouchableOpacity>
         </View>
-    );
-
+    );    
 }
 
 const styles = StyleSheet.create({
@@ -541,6 +671,20 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 18,
         fontWeight: 'bold',
+    },
+    buttonsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        width: '100%',
+        marginTop: 10,
+        marginBottom: 10,
+    },
+    roundButton: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     board: {
         flex: 1,
@@ -572,43 +716,13 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#fff',
     },
-    button: {
-        backgroundColor: '#4682b4',
-        width: 170,
-        padding: 15,
-        marginTop: 10,
-        marginBottom: 20,
-        borderRadius: 10,
-        alignItems: 'center',
-    },
-    buttonText: {
-        color: '#fff',
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    shuffleButton: {
-        backgroundColor: '#32CD32',
-        width: 170,
-        padding: 15,
-        marginTop: 10,
-        borderRadius: 10,
-        alignItems: 'center',
-    },
     hintCell: {
         borderColor: 'blue',
         borderWidth: 3,
     },
-    hintButton: {
-        backgroundColor: '#ffa07a',
-        padding: 15,
-        marginTop: 10,
-        borderRadius: 10,
-        alignItems: 'center',
-        width: 170,
-    },
     cellImage: {
         width: '80%',
         height: '80%',
-        resizeMode: 'contain', // Hoặc 'cover' tùy ý
+        resizeMode: 'contain',
     },
 });
